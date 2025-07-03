@@ -2,8 +2,7 @@ package ait.numbers.model;
 
 import ait.numbers.task.OneGroupSum;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -15,32 +14,19 @@ public class ExecutorGroupSum extends GroupSum {
 
     @Override
     public int computeSum() {
-        int nThreads = Runtime.getRuntime().availableProcessors();
-        ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
-        List<OneGroupSum> tasks = new ArrayList<>();
-
-        // Create and submit tasks
-        for (int[] group : numberGroups) {
-            OneGroupSum task = new OneGroupSum(group);
-            tasks.add(task);
-            executorService.execute(task);
+        int poolSize = Runtime.getRuntime().availableProcessors();
+        ExecutorService executorService = Executors.newFixedThreadPool(poolSize);
+        OneGroupSum[] groupSums = new OneGroupSum[numberGroups.length];
+        for (int i = 0; i < groupSums.length; i++) {
+            groupSums[i] = new OneGroupSum(numberGroups[i]);
+            executorService.execute(groupSums[i]);
         }
-
-        // Shutdown executor and wait for all tasks to complete
         executorService.shutdown();
         try {
-            executorService.awaitTermination(1, TimeUnit.HOURS);
+            executorService.awaitTermination(1, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
-            e.printStackTrace();
-            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         }
-
-        // Calculate total sum
-        int totalSum = 0;
-        for (OneGroupSum task : tasks) {
-            totalSum += task.getSum();
-        }
-
-        return totalSum;
+        return Arrays.stream(groupSums).mapToInt(OneGroupSum::getSum).sum();
     }
 }
